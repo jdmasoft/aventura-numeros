@@ -256,7 +256,7 @@ select{padding:8px 12px;border-radius:14px;border:3px solid var(--card-edge);bac
 /* ---------- Storage (safe) ---------- */
 const Store = (() => {
   const KEY = "aventura-numeros-v1";
-  const blank = () => ({ name:"", stars:{}, stickers:[], best:0, settings:{ voice:true, rate:1, voiceName:"", mode:"auto", unlockAll:false, autoListen:false } });
+  const blank = () => ({ name:"", stars:{}, stickers:[], best:0, settings:{ voice:true, rate:1, voiceName:"", mode:"auto", unlockAll:false, autoListen:false, micLang:"" } });
   let data = blank();
   try { const raw = localStorage.getItem(KEY); if (raw) { const p = JSON.parse(raw); data = Object.assign(blank(), p); data.settings = Object.assign(blank().settings, p.settings||{}); } } catch(e) {}
   return {
@@ -314,22 +314,42 @@ const Listener = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const policyBlocks = (() => { try { const fp = document.permissionsPolicy || document.featurePolicy; return !!(fp && fp.allowsFeature && !fp.allowsFeature("microphone")); } catch(e){ return false; } })();
   let blocked = policyBlocks, rec = null; const subs = [];
+  const lang = () => { const s = Store.d.settings.micLang; if (s) return s; const nl = navigator.language || ""; return /^es/i.test(nl) ? nl : "es-ES"; };
+  // Escucha con resultados parciales: algunos navegadores (sobre todo en móvil) entregan
+  // el número solo como resultado parcial o justo antes de "end", así que se acumula todo
+  // lo oído y se decide al final, recorriendo resultados y alternativas por índice.
   function listen(){
     return new Promise(res => {
       if (!SR || blocked) return res(null);
       try { rec?.abort(); } catch(e){}
-      let done = false; const fin = v => { if (!done) { done = true; res(v); } };
+      let done = false, heard = [], endTimer = 0, safety = 0, r = null;
+      const best = () => { for (const a of heard) { const n = wordsToNumber(a); if (n != null) return { value:n, heard:a }; } return { value:null, heard: heard[0] || "" }; };
+      const fin = v => { if (done) return; done = true; clearTimeout(endTimer); clearTimeout(safety); try { r && r.abort(); } catch(e){} res(v); };
       try {
-        const r = new SR(); rec = r;
-        r.lang = "es-ES"; r.interimResults = false; r.maxAlternatives = 5; r.continuous = false;
-        r.onresult = e => { const alts = [...e.results[0]].map(a => a.transcript); for (const a of alts) { const n = wordsToNumber(a); if (n != null) return fin({ value:n, heard:a }); } fin({ value:null, heard:alts[0]||"" }); };
-        r.onerror = e => { if (["not-allowed","service-not-allowed","audio-capture"].includes(e.error)) { blocked = true; subs.forEach(f=>f()); } fin(e.error==="no-speech" ? { value:null, heard:"" } : null); };
-        r.onend = () => fin({ value:null, heard:"" });
+        r = new SR(); rec = r;
+        r.lang = lang(); r.interimResults = true; r.maxAlternatives = 5; r.continuous = false;
+        r.onresult = e => {
+          const list = e.results, texts = []; let joined = "";
+          for (let i = 0; i < list.length; i++) { const alts = list[i]; if (alts[0]) joined += alts[0].transcript + " "; for (let j = 0; j < alts.length; j++) if (alts[j]?.transcript) texts.push(alts[j].transcript); }
+          heard = [joined.trim(), ...texts].filter(Boolean);
+          const b = best(), last = list[list.length - 1];
+          clearTimeout(endTimer);
+          if (b.value != null && last && last.isFinal) fin(b);
+          else if (b.value != null) endTimer = setTimeout(() => fin(best()), 900);
+        };
+        r.onerror = e => {
+          if (["not-allowed","service-not-allowed","audio-capture"].includes(e.error)) { blocked = true; subs.forEach(f=>f()); return fin(null); }
+          if (e.error === "aborted") return;
+          if (heard.length) return fin(best());
+          fin({ value:null, heard:"", error:e.error });
+        };
+        r.onend = () => { clearTimeout(endTimer); endTimer = setTimeout(() => fin(heard.length ? best() : { value:null, heard:"" }), 300); };
+        safety = setTimeout(() => fin(heard.length ? best() : { value:null, heard:"" }), 12000);
         Voice.stop(); r.start();
       } catch(e){ fin(null); }
     });
   }
-  return { listen, stop(){ try{ rec?.abort(); }catch(e){} }, get supported(){ return !!SR; }, get available(){ return !!SR && !blocked; }, onChange(f){ subs.push(f); } };
+  return { listen, lang, stop(){ try{ rec?.abort(); }catch(e){} }, get supported(){ return !!SR; }, get available(){ return !!SR && !blocked; }, onChange(f){ subs.push(f); } };
 })();
 
 /* ---------- Sound effects (Web Audio) ---------- */
@@ -434,6 +454,11 @@ const rushUnlocked = () => Store.d.settings.unlockAll || starsFor("w2") > 0;
 const starStr = n => "⭐".repeat(n) + "☆".repeat(3-n);
 let session = 0; // invalidates async work when screen changes
 function show(node){ session++; Voice.stop(); Listener.stop(); app.replaceChildren(node); window.scrollTo(0,0); }
+function missMessage(heard, error){
+  if (error === "network") return "No puedo escuchar sin internet. Responde tocando, por favor.";
+  if (heard) return `Escuché «${heard}», pero no entendí el número. ¿Me lo repites?`;
+  return "No te escuché bien. Toca el micrófono y di el número fuerte y claro.";
+}
 /* Botón de micrófono: handlers.onNumber(n) y handlers.onMiss() se fijan en cada pregunta */
 function MicButton(){
   const label = h("span",{},"Dímelo");
@@ -449,7 +474,7 @@ function MicButton(){
     const r = await Listener.listen();
     b.classList.remove("on"); label.textContent = "Dímelo";
     if (session !== my || hd !== b.handlers || !r) return;
-    if (r.value == null) hd.onMiss(r.heard); else hd.onNumber(r.value);
+    if (r.value == null) hd.onMiss(r.heard, r.error); else hd.onNumber(r.value);
   };
   b.onclick = () => { Sound.tap(); b.listen(); };
   return b;
@@ -561,8 +586,8 @@ function Game(world){
         const ok = await check(v, btn);
         if (!ok && mic.handlers === handlers) { qSlot.textContent = "?"; }
       },
-      onMiss(){
-        say("No te escuché bien. ¿Me lo repites?", bubble).then(() => { if (autoMisses++ < 1) autoListen(); });
+      onMiss(heard, error){
+        say(missMessage(heard, error), bubble).then(() => { if (autoMisses++ < 1) autoListen(); });
       }
     };
     mic.handlers = handlers;
@@ -743,6 +768,27 @@ function Album(){
   ));
 }
 
+function micLangRow(s){
+  const opts = [["","Automático"],["es-CO","Colombia"],["es-MX","México"],["es-ES","España"],["es-AR","Argentina"],["es-CL","Chile"],["es-PE","Perú"],["es-VE","Venezuela"],["es-EC","Ecuador"],["es-US","Estados Unidos"]];
+  const sel = h("select",{id:"mic-lang"}, opts.map(([v,l])=>h("option",{value:v,selected:(s.micLang||"")===v}, l)));
+  sel.onchange = () => { s.micLang = sel.value; Store.save(); };
+  return h("div",{class:"row"}, h("label",{for:"mic-lang"},"Acento del niño", h("small",{},"Elegir el país ayuda a que el micrófono entienda mejor")), sel);
+}
+function micTestRow(){
+  const out = h("small",{id:"mic-test-out"},"Toca el botón y di un número, por ejemplo «siete».");
+  const btn = h("button",{class:"btn small"},"🎤 Probar micrófono");
+  btn.onclick = async () => {
+    btn.disabled = true; out.textContent = `Escuchando (${Listener.lang()})… di un número`;
+    const r = await Listener.listen();
+    btn.disabled = false;
+    if (!r) { out.textContent = "El micrófono está bloqueado. Revisa el permiso del micrófono en el candado de la barra de direcciones."; return; }
+    if (r.error) { out.textContent = `No se pudo escuchar (error: ${r.error}).`; return; }
+    if (!r.heard) { out.textContent = "No oí nada. Habla más cerca del micrófono."; return; }
+    out.textContent = r.value != null ? `Oí «${r.heard}» → número ${r.value} ✅` : `Oí «${r.heard}», pero no encontré un número ❌`;
+    if (r.value != null) Voice.speak(`¡Te escuché! Dijiste ${r.value}.`);
+  };
+  return h("div",{class:"row"}, h("label",{},"Probar el micrófono", out), btn);
+}
 function Settings(scrollToHelp){
   const s = Store.d.settings;
   const sw = (key, label, sub) => { const b = h("button",{class:"switch",role:"switch","aria-checked":String(!!s[key]),"aria-label":label,id:"sw-"+key}); b.onclick=()=>{ s[key]=!s[key]; b.setAttribute("aria-checked",String(s[key])); Store.save(); Sound.tap(); }; return h("div",{class:"row"}, h("label",{for:"sw-"+key},label, sub?h("small",{},sub):null), b); };
@@ -773,8 +819,10 @@ function Settings(scrollToHelp){
       h("div",{class:"row"}, h("span",{style:"font-weight:800"},"¿Cómo suena?"), h("button",{class:"btn small",onclick:()=>Voice.speak("¡Hola! Soy Dino. Tres más dos son cinco. ¡Muy bien!")},"🔊 Probar voz")),
       h("div",{class:"row"}, h("label",{},"Forma de responder", h("small",{},"Automático: burbujas para los pequeños, teclado desde el Mundo 3")), seg),
       Listener.available
-        ? sw("autoListen","Escuchar automáticamente","El micrófono se abre solo cuando Dino termina la pregunta. También se puede tocar 🎤 «Dímelo».")
-        : h("div",{class:"row"}, h("label",{},"Responder hablando 🎤", h("small",{},"Funciona cuando la app está en su propia web (por ejemplo GitHub Pages) y se abre en Chrome o Edge."))),
+        ? [sw("autoListen","Escuchar automáticamente","El micrófono se abre solo cuando Dino termina la pregunta. También se puede tocar 🎤 «Dímelo»."),
+           micLangRow(s),
+           micTestRow()]
+        :h("div",{class:"row"}, h("label",{},"Responder hablando 🎤", h("small",{},"Funciona cuando la app está en su propia web (por ejemplo GitHub Pages) y se abre en Chrome o Edge."))),
       sw("unlockAll","Desbloquear todos los mundos","Para niños que ya saben sumar"),
       h("div",{class:"row"}, h("button",{class:"danger",onclick:()=>{confirmBox.hidden=false;}},"Borrar el progreso")),
       confirmBox),
