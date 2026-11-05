@@ -296,6 +296,7 @@ const AudioUnlock = (() => {
   return { getCtx, get unlocked(){ return done; } };
 })();
 
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 /* ---------- Voice ---------- */
 const Voice = (() => {
   const synth = window.speechSynthesis;
@@ -307,6 +308,9 @@ const Voice = (() => {
     if (!voices.length) { try { const all = synth?.getVoices()||[]; if (all.length) { total = all.length; voices = all.filter(v => /^es([-_]|$)/i.test(v.lang)); } } catch(e){} }
     const want = Store.d.settings.voiceName;
     if (want) { const v = voices.find(v => v.name === want); if (v) return v; }
+    // En iPhone/iPad, "Automática" usa la voz en español elegida en Ajustes del iPhone
+    // (Accesibilidad → Contenido leído → Voces), así que no se fuerza ninguna.
+    if (IS_IOS) return null;
     const score = v => (/(natural|neural|online|premium|enhanced|mejorad)/i.test(v.name)?5:0) + (/google/i.test(v.name)?3:0) + (/(m[oó]nica|paulina|helena|sabina|elvira|dalia|laura|lucia|marisol|ximena|isabela)/i.test(v.name)?2:0) + (/es[-_](ES|MX|US|419)/i.test(v.lang)?1:0) + (v.localService===false?1:0);
     return voices.slice().sort((a,b)=>score(b)-score(a))[0] || null;
   }
@@ -316,7 +320,7 @@ const Voice = (() => {
       try {
         const u = new SpeechSynthesisUtterance(text);
         const v = pick(); if (v) u.voice = v;
-        u.lang = v ? v.lang : "es-ES"; u.rate = Store.d.settings.rate; u.pitch = 1.15; u.volume = 1;
+        u.lang = v ? v.lang : (/^es-ES/i.test(navigator.language||"") || !IS_IOS ? "es-ES" : "es-MX"); u.rate = Store.d.settings.rate; u.pitch = 1.15; u.volume = 1;
         let t = 0;
         u.onend = u.onerror = () => { clearTimeout(t); res(); };
         const go = () => { try { synth.resume(); } catch(e){} t = setTimeout(res, 1500 + text.length * 90); synth.speak(u); };
@@ -831,14 +835,14 @@ function Settings(scrollToHelp){
   const voiceSel = h("select",{id:"voice-sel"}, h("option",{value:""},"Automática (la mejor en español)"), Voice.list.map(v=>h("option",{value:v.name,selected:v.name===s.voiceName},`${v.name} (${v.lang})`)));
   voiceSel.onchange = () => { s.voiceName = voiceSel.value; Store.save(); Voice.speak("¡Hola! Soy Dino. Tres más dos son cinco."); };
   Voice.onChange(()=>{ if (!voiceSel.isConnected) return; const cur = voiceSel.value; voiceSel.replaceChildren(h("option",{value:""},"Automática (la mejor en español)"), ...Voice.list.map(v=>h("option",{value:v.name,selected:v.name===cur},`${v.name} (${v.lang})`))); });
-  const status = h("small",{}, Voice.missingSpanish ? "⚠️ No hay voces en español instaladas" : Voice.current ? `Usando: ${Voice.current.name}` : "Elige una voz o usa la automática");
+  const status = h("small",{}, Voice.missingSpanish ? "⚠️ No hay voces en español instaladas" : Voice.current ? `Usando: ${Voice.current.name}` : IS_IOS ? "Automática: usa la voz en español de los Ajustes del iPhone" : "Elige una voz o usa la automática");
   const help = h("div",{class:"card help",id:"voice-help"},
     h("h3",{},"Cómo conseguir una buena voz en español"),
     h("p",{style:"font-weight:600"},"La voz de Dino es la del propio dispositivo. Estas opciones son gratis y suenan muy naturales:"),
     h("dl",{},
       h("dt",{},"💻 Ordenador: abre la app en Microsoft Edge"), h("dd",{},"Trae voces naturales en español (Elvira, Dalia, Jorge…) sin instalar nada. En Chrome aparece «Google español»."),
       h("dt",{},"🪟 Windows"), h("dd",{},"Configuración → Hora e idioma → Voz → Agregar voces → Español."),
-      h("dt",{},"📱 iPhone / iPad"), h("dd",{},"Ajustes → Accesibilidad → Contenido leído → Voces → Español → descarga «Mónica» o «Paulina (mejorada)»."),
+      h("dt",{},"📱 iPhone / iPad"), h("dd",{},"Ajustes → Accesibilidad → Contenido leído → Voces → Español → elige y descarga una voz, por ejemplo «Paulina (mejorada)» o «Mónica (mejorada)». Con «Automática», Dino usará esa voz. Las voces de Siri no se pueden usar en páginas web: Apple las reserva para Siri."),
       h("dt",{},"🤖 Android"), h("dd",{},"Ajustes → Sistema → Idioma → Salida de texto a voz → Motor de Google → Instalar datos de voz → Español."),
       h("dt",{},"🍎 Mac"), h("dd",{},"Ajustes del Sistema → Accesibilidad → Contenido leído → Voz del sistema → Gestionar voces → Español.")),
     h("p",{style:"font-weight:600;color:var(--ink-soft)"},"Después de instalarla, recarga esta página y elígela arriba en «Voz»."));
