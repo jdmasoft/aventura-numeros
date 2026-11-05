@@ -266,14 +266,45 @@ const Store = (() => {
   };
 })();
 
+/* ---------- AudioUnlock (iPhone/iPad) ----------
+   iOS solo deja sonar audio y voz si empiezan dentro de un toque, y el interruptor de
+   silencio apaga Web Audio salvo que la página pida el modo "reproducción". En el primer
+   toque se activa todo una sola vez. */
+const AudioUnlock = (() => {
+  let ctx = null, done = false;
+  function getCtx(){
+    try { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ ctx = null; }
+    if (ctx && ctx.state === "suspended") { try { ctx.resume(); } catch(e){} }
+    return ctx;
+  }
+  function silentWav(){
+    const n = 2205, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (o, s) => { for (let k = 0; k < s.length; k++) v.setUint8(o + k, s.charCodeAt(k)); };
+    w(0,"RIFF"); v.setUint32(4, 36 + n*2, true); w(8,"WAVE"); w(12,"fmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,22050,true); v.setUint32(28,44100,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,"data"); v.setUint32(40,n*2,true);
+    return URL.createObjectURL(new Blob([buf], { type:"audio/wav" }));
+  }
+  function unlock(){
+    if (done) return; done = true;
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}
+    try { const a = new Audio(silentWav()); a.setAttribute("playsinline",""); a.volume = 0.01; const pr = a.play(); if (pr && pr.catch) pr.catch(()=>{}); } catch(e){}
+    try { const c = getCtx(); if (c) { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } } catch(e){}
+    try { if (window.speechSynthesis && window.SpeechSynthesisUtterance) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; u.lang = "es-ES"; speechSynthesis.speak(u); } } catch(e){}
+    window.__audioUnlocked = (window.__audioUnlocked || 0) + 1;
+  }
+  ["pointerdown","touchend","keydown"].forEach(ev => document.addEventListener(ev, unlock, { capture:true, passive:true }));
+  return { getCtx, get unlocked(){ return done; } };
+})();
+
 /* ---------- Voice ---------- */
 const Voice = (() => {
   const synth = window.speechSynthesis;
-  let voices = [], total = 0, listeners = [];
+  let voices = [], total = 0, listeners = [], lastCancel = 0;
   function load(){ try { const all = synth?.getVoices()||[]; total = all.length; voices = all.filter(v => /^es([-_]|$)/i.test(v.lang)); } catch(e){ voices = []; } listeners.forEach(f=>f()); }
   load(); if (synth && "onvoiceschanged" in synth) synth.onvoiceschanged = load;
   setTimeout(load, 1500);
   function pick(){
+    if (!voices.length) { try { const all = synth?.getVoices()||[]; if (all.length) { total = all.length; voices = all.filter(v => /^es([-_]|$)/i.test(v.lang)); } } catch(e){} }
     const want = Store.d.settings.voiceName;
     if (want) { const v = voices.find(v => v.name === want); if (v) return v; }
     const score = v => (/(natural|neural|online|premium|enhanced|mejorad)/i.test(v.name)?5:0) + (/google/i.test(v.name)?3:0) + (/(m[oó]nica|paulina|helena|sabina|elvira|dalia|laura|lucia|marisol|ximena|isabela)/i.test(v.name)?2:0) + (/es[-_](ES|MX|US|419)/i.test(v.lang)?1:0) + (v.localService===false?1:0);
@@ -283,17 +314,21 @@ const Voice = (() => {
     return new Promise(res => {
       if (!synth || !Store.d.settings.voice || !window.SpeechSynthesisUtterance) return res();
       try {
-        synth.cancel();
         const u = new SpeechSynthesisUtterance(text);
         const v = pick(); if (v) u.voice = v;
-        u.lang = v ? v.lang : "es-ES"; u.rate = Store.d.settings.rate; u.pitch = 1.15;
-        const t = setTimeout(res, 1200 + text.length * 90);
+        u.lang = v ? v.lang : "es-ES"; u.rate = Store.d.settings.rate; u.pitch = 1.15; u.volume = 1;
+        let t = 0;
         u.onend = u.onerror = () => { clearTimeout(t); res(); };
-        synth.speak(u);
+        const go = () => { try { synth.resume(); } catch(e){} t = setTimeout(res, 1500 + text.length * 90); synth.speak(u); };
+        // iOS descarta la frase si se llama a speak() justo después de cancel():
+        // solo se cancela si algo suena y se espera un poco antes de hablar.
+        if (synth.speaking || synth.pending) { synth.cancel(); lastCancel = Date.now(); }
+        const wait = 150 - (Date.now() - lastCancel);
+        if (wait > 0) setTimeout(go, wait); else go();
       } catch(e){ res(); }
     });
   }
-  return { speak, get list(){ return voices; }, get missingSpanish(){ return !!synth && total > 0 && voices.length === 0; }, get current(){ return pick(); }, onChange(f){ listeners.push(f); }, available: !!synth, stop(){ try{synth?.cancel();}catch(e){} } };
+  return { speak, get list(){ return voices; }, get missingSpanish(){ return !!synth && total > 0 && voices.length === 0; }, get current(){ return pick(); }, onChange(f){ listeners.push(f); }, available: !!synth, stop(){ try{ if (synth && (synth.speaking || synth.pending)) { synth.cancel(); lastCancel = Date.now(); } }catch(e){} } };
 })();
 
 /* ---------- Listener (respuesta hablada) ---------- */
@@ -354,10 +389,9 @@ const Listener = (() => {
 
 /* ---------- Sound effects (Web Audio) ---------- */
 const Sound = (() => {
-  let ctx;
   function tone(freq, start, dur, type="sine", vol=.18){
     try {
-      ctx = ctx || new (window.AudioContext||window.webkitAudioContext)();
+      const ctx = AudioUnlock.getCtx(); if (!ctx) return;
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = type; o.frequency.value = freq;
       g.gain.setValueAtTime(0, ctx.currentTime+start);
@@ -492,7 +526,7 @@ function say(text, bubbleEl){ if (bubbleEl) bubbleEl.textContent = text; live.te
 /* ---------- Screens ---------- */
 function Home(){
   const input = h("input",{class:"name-input",id:"kid-name",maxlength:"16",placeholder:"Escribe tu nombre",value:Store.d.name,autocomplete:"off"});
-  const go = () => { Store.d.name = input.value.trim(); Store.save(); Sound.right(); const n = Store.d.name; Voice.speak(n ? `¡Hola, ${n}! Soy Dino. ¿Listos para jugar con los números?` : "¡Hola! Soy Dino. ¿Listos para jugar con los números?"); WorldMap(); };
+  const go = () => { Store.d.name = input.value.trim(); Store.save(); Sound.right(); const n = Store.d.name; WorldMap(); Voice.speak(n ? `¡Hola, ${n}! Soy Dino. ¿Listos para jugar con los números?` : "¡Hola! Soy Dino. ¿Listos para jugar con los números?"); };
   input.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
   show(h("section",{class:"screen home"},
     dino("big"),
@@ -817,6 +851,7 @@ function Settings(scrollToHelp){
       h("div",{class:"row"}, h("label",{for:"rate"},"Velocidad de la voz", h("small",{},"Más lenta para los más pequeños")), rate),
       h("div",{class:"row"}, h("label",{for:"voice-sel"},"Voz en español", status), voiceSel),
       h("div",{class:"row"}, h("span",{style:"font-weight:800"},"¿Cómo suena?"), h("button",{class:"btn small",onclick:()=>Voice.speak("¡Hola! Soy Dino. Tres más dos son cinco. ¡Muy bien!")},"🔊 Probar voz")),
+      h("p",{style:"font-weight:700;color:var(--ink-soft);margin:0"},"📱 ¿No suena en iPhone o iPad? Sube el volumen con los botones laterales y quita el modo silencio (interruptor lateral o centro de control)."),
       h("div",{class:"row"}, h("label",{},"Forma de responder", h("small",{},"Automático: burbujas para los pequeños, teclado desde el Mundo 3")), seg),
       Listener.available
         ? [sw("autoListen","Escuchar automáticamente","El micrófono se abre solo cuando Dino termina la pregunta. También se puede tocar 🎤 «Dímelo»."),
