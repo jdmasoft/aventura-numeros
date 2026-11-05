@@ -453,7 +453,46 @@ function speechFor(p, w){
   if (w === "rush") return `${p.a} ${p.op==="+"?"más":"menos"} ${p.b}`;
   return `${nm?nm+", ":""}¿cuánto es ${p.a} ${p.op==="+"?"más":"menos"} ${p.b}?`;
 }
-const PRAISE = ["¡Muy bien!","¡Genial!","¡Increíble!","¡Eres una estrella!","¡Fantástico!","¡Bravo!","¡Lo lograste!","¡Súper!","¡Qué cerebro tan grande!"];
+const PRAISE = [
+  "¡Muy bien!","¡Genial!","¡Increíble!","¡Eres una estrella!","¡Fantástico!","¡Bravo!","¡Lo lograste!","¡Súper!","¡Qué cerebro tan grande!",
+  "¡Excelente!","¡Perfecto!","¡Maravilloso!","¡Espectacular!","¡Asombroso!","¡Eso es!","¡Correctísimo!","¡Tremendo!","¡Qué crack!",
+  "¡Eres un genio de los números!","¡Lo hiciste de maravilla!","¡Qué rápido piensas!","¡Bien pensado!","¡Así se hace!","¡Estoy muy orgulloso de ti!",
+  "¡Tus números brillan!","¡Le diste justo en el blanco!","¡Eres un campeón de las sumas!","¡Wow, qué inteligente!","¡Me encanta cómo cuentas!",
+  "¡Eres pura magia matemática!","¡Choca esos cinco!","¡Mis escamas de dinosaurio aplauden!","¡Rugido de alegría! ¡Groar!","¡Ni un dinosaurio lo haría mejor!",
+  "¡Hasta las estrellas te aplauden!","¡Tu cerebro está en modo cohete!","¡Eso merece un baile!","¡Qué bien lo haces!","¡Lo tienes clarísimo!",
+  "¡Brillante como una estrella!","¡Eres imparable!","¡Medalla de oro para ti!","¡Qué maravilla de respuesta!","¡Lo sabías! ¡Claro que sí!",
+  "¡Pum! ¡Respuesta perfecta!","¡Aplausos, aplausos!","¡Sigues aprendiendo muchísimo!","¡Tu esfuerzo se nota!","¡Qué orgullo verte jugar!"
+];
+const PRAISE_NAME = [
+  "¡Bravo, {n}!","¡Muy bien, {n}!","¡{n}, eres increíble!","¡Qué inteligente eres, {n}!","¡{n}, lo hiciste genial!","¡Así se hace, {n}!",
+  "¡{n}, eres una superestrella!","¡Choca esos cinco, {n}!","¡{n}, me haces bailar de alegría!","¡Excelente trabajo, {n}!","¡{n}, eres un genio!",
+  "¡Perfecto, {n}! ¡Sigue así!","¡{n}, tu cerebro es enorme!","¡Estoy muy orgulloso de ti, {n}!"
+];
+const PRAISE_RETRY = [
+  "¡Eso es! No te rendiste y lo lograste.","¡Muy bien! Lo pensaste otra vez y acertaste.","¡Lo conseguiste! Equivocarse también es aprender.",
+  "¡Bravo! Intentarlo de nuevo es de valientes.","¡Ahora sí! Sabía que podías.","¡Genial! Contaste con calma y acertaste.",
+  "¡Perfecto! Los grandes también lo intentan dos veces."
+];
+const PRAISE_STREAK = {
+  3: ["¡Tres seguidas! ¡Estás en racha!","¡Tres de tres! ¡Qué buena racha!"],
+  5: ["¡Cinco seguidas! ¡Eres imparable!","¡Cinco aciertos seguidos! ¡Fuego matemático!"],
+  7: ["¡Siete seguidas! ¡Eres una máquina de números!","¡Siete sin fallar! ¡Increíble!"],
+  10: ["¡Diez seguidas! ¡Eres una leyenda de los números!","¡Diez de diez! ¡Perfección total!"]
+};
+// Bolsa sin repeticiones: no vuelve a salir una frase hasta haber usado las demás.
+const bags = new Map();
+function fromBag(list){
+  let b = bags.get(list);
+  if (!b || !b.length) { b = list.slice().sort(() => Math.random() - .5); bags.set(list, b); }
+  return b.pop();
+}
+function praiseFor({ firstTry, run }){
+  const n = Store.d.name;
+  if (firstTry && PRAISE_STREAK[run]) return fromBag(PRAISE_STREAK[run]) + (n ? ` ¡Bien, ${n}!` : "");
+  if (!firstTry) return fromBag(PRAISE_RETRY);
+  if (n && Math.random() < .35) return fromBag(PRAISE_NAME).replace(/\{n\}/g, n);
+  return fromBag(PRAISE);
+}
 const OOPS = ["¡Casi! Vamos a intentarlo otra vez.","Uy, no pasa nada. Piensa un poquito más.","¡Tú puedes! Prueba de nuevo."];
 const pickOne = a => a[rnd(0,a.length-1)];
 
@@ -571,7 +610,7 @@ function WorldMap(){
 function Game(world){
   const my = session + 1;
   const ROUNDS = 10;
-  let i = 0, cap = world.cap[0], streak = 0, missStreak = 0, mistakes = 0, results = [];
+  let i = 0, cap = world.cap[0], streak = 0, missStreak = 0, mistakes = 0, run = 0, results = [];
   const progress = h("div",{class:"progress","aria-label":"Progreso"}, Array.from({length:ROUNDS},()=>h("span")));
   const bubble = h("div",{class:"bubble"},"");
   const mascot = dino();
@@ -641,7 +680,8 @@ function Game(world){
         if (tries === 0) { streak++; missStreak = 0; if (streak >= 3) { cap = Math.min(world.cap[1], cap + (world.id==="w4"?10:2)); streak = 0; } }
         results[i] = tries === 0 ? "done" : "miss";
         answerArea.style.pointerEvents = "none";
-        await say(pickOne(PRAISE) + (tries===0 && Math.random()<.4 && Store.d.name ? ` ${Store.d.name}!` : ""), bubble);
+        run = tries === 0 ? run + 1 : 0;
+        await say(praiseFor({ firstTry: tries === 0, run }), bubble);
         await sleep(350);
         answerArea.style.pointerEvents = "";
         i++; next(); return true;
@@ -870,7 +910,7 @@ function Settings(scrollToHelp){
   if (scrollToHelp) help.scrollIntoView({behavior:"smooth"});
 }
 
-window.__AN = { genProblem, makeChoices, WORLDS, wordsToNumber };
+window.__AN = { genProblem, makeChoices, WORLDS, wordsToNumber, praiseFor };
 Store.d.name ? WorldMap() : Home();
 </script>
 
