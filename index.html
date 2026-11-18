@@ -291,6 +291,28 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:4px solid 
 .p-solidopt{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:1.05rem}
 .medals{display:flex;flex-direction:column;gap:8px}
 .medal-row{display:flex;flex-wrap:wrap;gap:8px;font-size:2rem}
+
+.dino-worlds{background:var(--card);border-radius:var(--r-big);box-shadow:0 6px 0 var(--card-edge);padding:14px;display:flex;flex-direction:column;gap:10px}
+.dino-worlds .worlds{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px}
+.dino-worlds .world{min-height:118px;padding:14px}
+.dino-worlds .world .w-name{font-size:1.25rem}
+.dino-worlds .world .w-emoji{font-size:2.4rem}
+.p-col{display:inline-grid;grid-template-columns:auto repeat(3,1.1em);font-family:var(--f-display);font-weight:800;font-size:clamp(2.4rem,10vw,3.4rem);line-height:1.15;font-variant-numeric:tabular-nums;text-align:center;background:var(--card);border-radius:18px;padding:8px 18px;box-shadow:0 5px 0 var(--card-edge)}
+.p-col .hd{font-size:.42em;color:var(--ink-soft)}
+.p-col .op{color:var(--coral)}
+.p-col .ln{grid-column:1/-1;height:5px;background:var(--ink);border-radius:3px;margin:4px 0}
+.p-col .q{color:var(--grape)}
+.p-cmp{display:flex;align-items:center;gap:.4em;font-family:var(--f-display);font-weight:800;font-size:clamp(2.6rem,11vw,4rem);font-variant-numeric:tabular-nums}
+.p-cmp .box{display:inline-grid;place-items:center;width:1.2em;height:1.2em;border:4px dashed var(--grape);border-radius:16px;color:var(--grape)}
+.pchoice.sym{font-size:2.6rem}
+.p-frac{max-width:100%;height:auto}
+.fr-on{fill:var(--coral)}.fr-off{fill:var(--card)}.fr-line{stroke:var(--ink);stroke-width:3;fill:none}
+.p-coord{display:grid;grid-template-columns:auto repeat(5,minmax(0,1fr));gap:3px;width:min(100%,330px);font-family:var(--f-display);font-weight:800}
+.p-coord span{display:grid;place-items:center;aspect-ratio:1;font-size:clamp(1.3rem,6vw,1.9rem);background:var(--card);border-radius:8px;border:1px solid var(--card-edge)}
+.p-coord span.lab{background:none;border:none;font-size:1.1rem;color:var(--ink-soft);aspect-ratio:auto}
+.p-bag{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:230px;padding:22px 18px 18px;border-radius:40% 40% 30px 30px;background:color-mix(in srgb,var(--sun) 35%,var(--card));border:4px solid var(--sun-deep)}
+.p-bag i{width:30px;height:30px;border-radius:50%;box-shadow:inset -4px -4px 0 rgba(0,0,0,.18)}
+.p-frac-lbl{font-family:var(--f-display);font-weight:800}
 /* Mic */
 .mic-row{display:flex;justify-content:center}
 .mic-btn{display:inline-flex;align-items:center;gap:12px;font-family:var(--f-display);font-weight:800;font-size:1.3rem;min-height:64px;padding:8px 26px 8px 10px;border-radius:999px;background:var(--grape);color:#fff;box-shadow:0 6px 0 color-mix(in srgb,var(--grape) 60%,#000),0 10px 20px var(--shadow);transition:background .2s}
@@ -599,7 +621,8 @@ function sequence(min, max, step = 1, dir = 1) {
     if (step === 1) start = R(startMin, startMax);
     const seq = Array.from({ length: len }, (_, k) => start + dir * step * k), miss = lv === 1 ? len - 1 : R(1, len - 1), ans = seq[miss];
     const shown = seq.map((v, k) => k === miss ? "¿?" : v).join(", ");
-    const how = step === 1 ? (dir > 0 ? "hacia delante" : "hacia atrás") : `de ${step === 2 ? "dos en dos" : step === 5 ? "cinco en cinco" : "diez en diez"}`;
+    const W = { 2: "dos en dos", 3: "tres en tres", 4: "cuatro en cuatro", 5: "cinco en cinco", 10: "diez en diez" };
+    const how = step === 1 ? (dir > 0 ? "hacia delante" : "hacia atrás") : `de ${W[step] || step + " en " + step}${dir < 0 ? " hacia atrás" : ""}`;
     return { say: `Cuenta ${how}: ${shown}. ¿Qué número falta?`, render: el => el.append(E("div", { class: "p-seq" }, ...seq.map((v, k) => E("span", { class: k === miss ? "p-slot" : "" }, k === miss ? "?" : String(v))))),
       choices: numOpts(ans, { min: 0, max: 120, near: [step, -step, 2 * step, 1, -1].filter(Boolean) }), answer: ans, numeric: true,
       hint: `Cada número ${dir > 0 ? "sube" : "baja"} ${step}. ${dir > 0 ? `Después de ${seq[miss - 1] ?? seq[0]}` : `Antes del ${seq[miss + 1] ?? seq[0]} hacia atrás`}…` };
@@ -909,7 +932,7 @@ function facesOf() {
 }
 
 /* ---------- Curso de Preescolar ---------- */
-const U = (id, emoji, color, name, skills) => ({ id, emoji, color, name, skills: skills.map(([sid, sname, gen, extra]) => ({ id: `pre.${sid}`, code: sid, name: sname, gen, ...(extra || {}) })) });
+const U = (id, emoji, color, name, skills, prefix = "pre") => ({ id: `${prefix}.${id}`, code: id, emoji, color, name, skills: skills.map(([sid, sname, gen, extra]) => ({ id: `${prefix}.${sid}`, code: sid, name: sname, gen, ...(extra || {}) })) });
 const PRE_UNITS = [
   U("A", "🐣", "#ff7a59", "Los números y contar hasta el 3", [["A1", "Aprender a contar hasta 3", learnCount(3), { learn: true }], ["A2", "Contar hasta 3", count(3)], ["A3", "Números hasta 3 en el marco de diez", tenFrameSkill(3)]]),
   U("B", "🖐️", "#f6a21a", "Los números y contar hasta el 5", [["B1", "Aprender a contar hasta 5", learnCount(5), { learn: true }], ["B2", "Contar hasta 5", count(5)], ["B3", "Números hasta 5 en el marco de diez", tenFrameSkill(5)]]),
@@ -949,8 +972,8 @@ function Courses() {
   const cards = COURSES.filter(c => !c.soon).map(c => {
     let sub = c.age || "Próximamente", prog = "";
     if (c.units) { const all = c.units.flatMap(u => u.skills), done = all.filter(s => skillStars(s.id)).length; prog = `${done}/${all.length} habilidades`; }
-    if (c.worlds) prog = `⭐ ${Object.values(Store.d.stars).reduce((a, b) => a + b, 0)}`;
-    return E("button", { class: "course" + (c.soon ? " soon" : ""), style: `--c:${c.color}`, disabled: !!c.soon, "aria-label": c.name + (c.soon ? ", próximamente" : ""), onclick: () => { Sound.tap(); Store.d.lastCourse = c.id; Store.save(); c.worlds ? WorldMap() : CourseMap(c); } },
+    if (c.worlds && !c.units) prog = `⭐ ${Object.values(Store.d.stars).reduce((a, b) => a + b, 0)}`;
+    return E("button", { class: "course" + (c.soon ? " soon" : ""), style: `--c:${c.color}`, disabled: !!c.soon, "aria-label": c.name + (c.soon ? ", próximamente" : ""), onclick: () => { Sound.tap(); Store.d.lastCourse = c.id; Store.save(); c.units ? CourseMap(c) : WorldMap(); } },
       E("span", { class: "c-emoji" }, c.emoji), E("span", { class: "c-name" }, c.name), E("span", { class: "c-sub" }, c.soon ? "Próximamente" : sub), prog ? E("span", { class: "c-prog" }, prog) : null);
   });
   show(E("section", { class: "screen" },
@@ -965,7 +988,7 @@ function CourseMap(course) {
   window.__back = () => CourseMap(course);
   const nx = nextSkill(course);
   const all = course.units.flatMap(u => u.skills), done = all.filter(s => skillStars(s.id)).length;
-  const units = course.units.map(u => E("section", { class: "unit", style: `--c:${u.color}`, id: `unit-${u.id}` },
+  const units = course.units.map(u => E("section", { class: "unit", style: `--c:${u.color}`, id: `unit-${u.code}` },
     E("h3", { class: "unit-h" }, E("span", { class: "u-emoji", "aria-hidden": "true" }, u.emoji), E("span", { class: "u-name" }, u.name), unitDone(u) ? E("span", { class: "u-medal", title: "Tema completado" }, "🏅") : null),
     E("div", { class: "skills" }, u.skills.map(s => E("button", { class: "skill" + (nx && nx.id === s.id ? " next" : ""), onclick: () => { Sound.tap(); Practice(s, course); } },
       E("span", { class: "s-code" }, s.code), E("span", { class: "s-name" }, s.name, s.learn ? E("span", { class: "s-learn" }, " · guiado") : null),
@@ -974,8 +997,9 @@ function CourseMap(course) {
     E("div", { class: "topbar" }, E("button", { class: "icon-btn", "aria-label": "Volver a los cursos", onclick: Courses }, "🎒"),
       E("div", { class: "grow" }, E("div", { class: "hello" }, `${course.emoji} ${course.name}`), E("div", { style: "font-weight:700;color:var(--ink-soft)" }, `${done} de ${all.length} habilidades con estrellas`)),
       E("button", { class: "icon-btn", "aria-label": "Ajustes", onclick: Settings }, "⚙️")),
-    nx ? E("button", { class: "btn next-cta", onclick: () => Practice(nx, course) }, `▶ Seguir: ${nx.name}`) : E("div", { class: "card", style: "text-align:center;font-weight:800" }, "🏆 ¡Completaste todo Preescolar! Repite para ganar 3 estrellas en todo."),
-    E("nav", { class: "unit-nav", "aria-label": "Temas" }, course.units.map(u => E("a", { href: `#unit-${u.id}`, style: `--c:${u.color}`, onclick: e => { e.preventDefault(); document.getElementById(`unit-${u.id}`)?.scrollIntoView({ behavior: "smooth" }); } }, `${u.emoji} ${u.id}`))),
+    nx ? E("button", { class: "btn next-cta", onclick: () => Practice(nx, course) }, `▶ Seguir: ${nx.name}`) : E("div", { class: "card", style: "text-align:center;font-weight:800" }, `🏆 ¡Completaste todo ${course.name}! Repite para ganar 3 estrellas en todo.`),
+    course.worlds ? E("section", { class: "dino-worlds" }, E("h3", { class: "unit-h" }, E("span", { class: "u-emoji" }, "🎮"), E("span", { class: "u-name" }, "Mundos de Dino: sumas y restas")), E("div", { class: "worlds" }, worldCards())) : null,
+    E("nav", { class: "unit-nav", "aria-label": "Temas" }, course.units.map(u => E("a", { href: `#unit-${u.code}`, style: `--c:${u.color}`, onclick: e => { e.preventDefault(); document.getElementById(`unit-${u.code}`)?.scrollIntoView({ behavior: "smooth" }); } }, `${u.emoji} ${u.code}`))),
     ...units));
 }
 
@@ -1024,7 +1048,8 @@ function Practice(skill, course) {
         busy = true; results[i] = "miss";
         const good = [...area.querySelectorAll("[data-v]")].find(b => b.dataset.v === String(q.answer)); good?.classList.add("reveal");
         const lbl = (q.choices.find(c => String(c.value) === String(q.answer)) || {});
-        await say(`Era ${lbl.speak || (lbl.emoji ? "esta" : lbl.label || "esta")}. ¡La próxima la sacas tú!`, bubble);
+        const SYM = { "<": "menor que", ">": "mayor que", "=": "igual" };
+        await say(`Era ${SYM[lbl.label] || lbl.speak || (lbl.emoji ? "esta" : lbl.label || "esta")}. ¡La próxima la sacas tú!`, bubble);
         await sleep(900); i++; next(); return;
       }
       showHint();
@@ -1051,7 +1076,7 @@ function Practice(skill, course) {
       const isNum = q.numeric && list.every(c => c.label && !c.node && c.label.length <= 4);
       const grid = E("div", { class: isNum ? "choices" : "pchoices" + (q.wide ? " wide" : "") + (list.length === 2 ? " two" : list.length === 3 ? " three" : "") });
       list.forEach(c => {
-        const b = E("button", { class: isNum ? "choice" : "pchoice" + (c.emoji ? " emoji" : "") + (c.node ? " pic" : " txt"), "data-v": String(c.value), "aria-label": c.aria || c.label || String(c.value) });
+        const b = E("button", { class: isNum ? "choice" : "pchoice" + (c.emoji ? " emoji" : "") + (q.sym ? " sym" : "") + (c.node ? " pic" : " txt"), "data-v": String(c.value), "aria-label": c.aria || c.label || String(c.value) });
         if (c.node) b.append(c.node()); else b.append(c.label);
         b.onclick = () => { if (busy || b.disabled) return; if (String(c.value) === String(q.answer)) { b.classList.add("right"); finish(tries === 0); } else wrong(b); };
         grid.append(b);
@@ -1096,7 +1121,379 @@ function PracticeResults(skill, course, mistakes) {
 }
 
 window.PRE = { COURSES, PRE_UNITS, ALL_SKILLS, EXTRA_STICKERS, numOpts };
+window.PREKIT = { R, pick, shuffle, sampleN, S, E, numOpts, textOpts, objRow, countAlong, tenFrame, numberLine, hundredChart, tensOnes, shape2D, solid3D, ruler, thermometer, bar, groupBox, patternRow,
+  COLORS, COLOR_NAMES, OBJS, nm, cuantos, SHAPES, SOLIDS, ANIMALS, U, ALL_SKILLS,
+  learnCount, count, tenFrameSkill, lineSkill, sequence, afterBefore, tensOnesSkill, hundredSkill, lineWindow, skipLearn, skipMixed, byColor, byShape, oddOne, moreLess, moreLessEqual, compareNums, orderNums,
+  completePattern, samePattern, addPicture, addFacts, makeNumberAdd, completeAdd, subPicture, subFacts, makeNumberSub, completeSub, gridSkill, aboveBelow, measureClips, measureRuler, thermo, compareLengths, timeUnits,
+  identify2D, sidesCorners, venn, identify3D, everyday3D, faceCount, traceShape, facesOf };
 window.Courses = Courses; window.CourseMap = CourseMap; window.Practice = Practice; window.goBack = goBack;
+})();
+
+</script>
+<script>
+/* =====================================================================
+   1.º grado para "Aventura de Números". Usa el kit de preescolar.js.
+   ===================================================================== */
+(() => {
+"use strict";
+const K = window.PREKIT;
+const { R, pick, shuffle, sampleN, S, E, numOpts, objRow, tenFrame, numberLine, hundredChart, tensOnes, thermometer, COLORS, COLOR_NAMES, OBJS, nm, U } = K;
+const g1 = (id, emoji, color, name, skills) => U(id, emoji, color, name, skills, "g1");
+const opsym = o => o === "+" ? "+" : "−", opword = o => o === "+" ? "más" : "menos";
+const exprOpts = (good, gen, n = 3) => { const set = new Set([good]); let t = 0; while (set.size < n && t++ < 60) { const v = gen(); if (v) set.add(v); } return shuffle([...set]).map(v => ({ value: v, label: v, speak: v.replace("−", "menos") })); };
+
+/* ---------- Dibujos ---------- */
+function column(a, b, op) {
+  const d = (n, k) => { const s = String(n); return s.length > k ? s[s.length - 1 - k] : ""; };
+  return E("div", { class: "p-col", role: "img", "aria-label": `${a} ${opword(op)} ${b}` },
+    E("span", {}), E("span", { class: "hd" }, ""), E("span", { class: "hd" }, "D"), E("span", { class: "hd" }, "U"),
+    E("span", {}), E("span", {}), E("span", {}, d(a, 1)), E("span", {}, d(a, 0)),
+    E("span", { class: "op" }, opsym(op)), E("span", {}), E("span", {}, d(b, 1)), E("span", {}, d(b, 0)),
+    E("span", { class: "ln" }),
+    E("span", {}), E("span", {}), E("span", { class: "q" }, "?"), E("span", { class: "q" }, "?"));
+}
+const FR_WORD = { "1/2": "un medio", "2/2": "dos medios", "1/3": "un tercio", "2/3": "dos tercios", "3/3": "tres tercios", "1/4": "un cuarto", "2/4": "dos cuartos", "3/4": "tres cuartos", "4/4": "cuatro cuartos", "1/6": "un sexto", "5/6": "cinco sextos" };
+const frWord = f => FR_WORD[f] || f;
+const PART_NAME = { 2: "mitades", 3: "tercios", 4: "cuartos" };
+function pie(n, k, { equal = true, size = 140 } = {}) {
+  const svg = S("svg", { viewBox: "0 0 100 100", width: size, height: size, class: "p-frac", role: "img", "aria-label": `Círculo con ${n} partes, ${k} pintadas` });
+  let cuts = Array.from({ length: n }, (_, i) => i / n);
+  if (!equal) cuts = pick({ 2: [[0, .32], [0, .7]], 3: [[0, .2, .55], [0, .45, .62]], 4: [[0, .15, .4, .6], [0, .3, .42, .8]] }[n]);
+  const pt = t => [50 + 44 * Math.cos(2 * Math.PI * t - Math.PI / 2), 50 + 44 * Math.sin(2 * Math.PI * t - Math.PI / 2)];
+  cuts.forEach((c, i) => { const e = i + 1 < n ? cuts[i + 1] : 1, [x1, y1] = pt(c), [x2, y2] = pt(e); svg.append(S("path", { d: `M50 50 L${x1} ${y1} A44 44 0 ${e - c > .5 ? 1 : 0} 1 ${x2} ${y2} Z`, class: i < k ? "fr-on" : "fr-off" })); });
+  svg.append(S("circle", { cx: 50, cy: 50, r: 44, class: "fr-line" }));
+  cuts.forEach(c => { const [x, y] = pt(c); svg.append(S("line", { x1: 50, y1: 50, x2: x, y2: y, class: "fr-line" })); });
+  return svg;
+}
+function rectParts(n, k, { equal = true, w = 220, h = 90, grid = false } = {}) {
+  const svg = S("svg", { viewBox: `0 0 ${w + 8} ${h + 8}`, width: Math.min(w + 8, 260), class: "p-frac", role: "img", "aria-label": `Figura con ${n} partes, ${k} pintadas` });
+  if (grid && n === 4) {
+    [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([c, r], i) => svg.append(S("rect", { x: 4 + c * w / 2, y: 4 + r * h / 2, width: w / 2, height: h / 2, class: i < k ? "fr-on" : "fr-off" })));
+    svg.append(S("rect", { x: 4, y: 4, width: w, height: h, class: "fr-line" }), S("line", { x1: 4 + w / 2, y1: 4, x2: 4 + w / 2, y2: 4 + h, class: "fr-line" }), S("line", { x1: 4, y1: 4 + h / 2, x2: 4 + w, y2: 4 + h / 2, class: "fr-line" }));
+    return svg;
+  }
+  let ws = Array(n).fill(w / n);
+  if (!equal) { ws = Array.from({ length: n }, () => .5 + Math.random()); if (n === 2) ws = [.35, .65]; const t = ws.reduce((a, b) => a + b, 0); ws = ws.map(x => x / t * w); }
+  let x = 4; ws.forEach((ww, i) => { svg.append(S("rect", { x, y: 4, width: ww, height: h, class: i < k ? "fr-on" : "fr-off" })); x += ww; });
+  svg.append(S("rect", { x: 4, y: 4, width: w, height: h, class: "fr-line" }));
+  x = 4; ws.slice(0, -1).forEach(ww => { x += ww; svg.append(S("line", { x1: x, y1: 4, x2: x, y2: 4 + h, class: "fr-line" })); });
+  return svg;
+}
+const fracBar = (n, k) => rectParts(n, k, { w: 300, h: 44 });
+function fracLine(n, k) {
+  const W = 600, pad = 40, svg = S("svg", { viewBox: `0 0 ${W} 110`, class: "p-nl", role: "img", "aria-label": `Recta de 0 a 1 en ${n} partes` });
+  svg.append(S("line", { x1: pad, y1: 60, x2: W - pad, y2: 60, class: "nl-line" }));
+  for (let i = 0; i <= n; i++) { const x = pad + i * (W - 2 * pad) / n; svg.append(S("line", { x1: x, y1: 48, x2: x, y2: 72, class: "nl-line" })); if (i === 0 || i === n) svg.append(S("text", { x, y: 100, "text-anchor": "middle", "font-size": 22, class: "nl-text" }, String(i / n))); }
+  svg.append(S("circle", { cx: pad + k * (W - 2 * pad) / n, cy: 60, r: 11, fill: "#e8453c" }));
+  return svg;
+}
+function coordGrid(items) {
+  const g = E("div", { class: "p-coord", role: "img", "aria-label": "Plano de coordenadas" });
+  for (let r = 5; r >= 1; r--) { g.append(E("span", { class: "lab" }, String(r))); for (let c = 0; c < 5; c++) g.append(E("span", {}, items[`${"ABCDE"[c]}${r}`] || "")); }
+  g.append(E("span", { class: "lab" }, "")); for (let c = 0; c < 5; c++) g.append(E("span", { class: "lab" }, "ABCDE"[c]));
+  return g;
+}
+const PROB_COLORS = ["rojo", "azul", "amarillo", "verde", "morado"];
+function bag(counts) { const d = E("div", { class: "p-bag", role: "img", "aria-label": "Bolsa de canicas" }); shuffle(Object.entries(counts).flatMap(([c, n]) => Array(n).fill(c))).forEach(c => d.append(E("i", { style: `background:${COLORS[c]}` }))); return d; }
+
+/* ---------- Números y contar ---------- */
+function patternCount() {
+  return lv => {
+    const step = pick(lv === 1 ? [2, 3] : [3, 4, 5, 10]), start = R(1, 20), len = 5, seq = Array.from({ length: len }, (_, k) => start + k * step), miss = R(2, len - 1), ans = seq[miss];
+    return { say: `Descubre el patrón: ${seq.map((v, k) => k === miss ? "¿?" : v).join(", ")}. ¿Qué número falta?`, render: el => el.append(E("div", { class: "p-seq" }, seq.map((v, k) => E("span", { class: k === miss ? "p-slot" : "" }, k === miss ? "?" : String(v))))),
+      choices: numOpts(ans, { min: 0, max: 200, near: [1, -1, step, -step, 2] }), answer: ans, numeric: true, hint: `Mira cuánto sube cada vez: ${seq[1] - seq[0]}.` };
+  };
+}
+function roundTen() {
+  return lv => {
+    let n; do { n = R(lv === 1 ? 11 : 11, lv === 3 ? 99 : 59); } while (n % 10 === 0 || n % 10 === 5);
+    const lo = Math.floor(n / 10) * 10, hi = lo + 10, ans = n % 10 < 5 ? lo : hi;
+    return { say: `¿El ${n} está más cerca del ${lo} o del ${hi}?`, render: el => el.append(numberLine({ min: lo, max: hi, marker: n, markerEmoji: "📍", highlight: n })),
+      choices: [{ value: lo, label: String(lo) }, { value: hi, label: String(hi) }], answer: ans, numeric: true, fixedOrder: true, meta: { n, kind: "round" },
+      hint: `Cuenta los saltos desde ${n} hasta ${lo} y hasta ${hi}. Gana el que esté más cerca.` };
+  };
+}
+function evenOdd() {
+  return lv => {
+    if (Math.random() < .5) {
+      const even = Math.random() < .5, max = lv === 1 ? 20 : 100;
+      const good = (() => { let v; do { v = R(1, max); } while ((v % 2 === 0) !== even); return v; })();
+      const set = new Set([good]); while (set.size < 4) { const v = R(1, max); if ((v % 2 === 0) !== even) set.add(v); }
+      return { say: `¿Cuál número es ${even ? "par" : "impar"}?`, choices: shuffle([...set]).map(v => ({ value: v, label: String(v) })), answer: good, numeric: true, meta: { kind: "parity", even },
+        hint: `Los números pares terminan en 0, 2, 4, 6 u 8. Los impares terminan en 1, 3, 5, 7 o 9.` };
+    }
+    const n = R(2, lv === 1 ? 12 : 99), ans = n % 2 === 0 ? "par" : "impar";
+    return { say: `¿El número ${n} es par o impar?`, render: el => { el.append(E("div", { class: "p-bignum" }, String(n))); if (n <= 12) { const d = E("div", { class: "p-objs" }); for (let k = 0; k < n; k += 2) d.append(E("span", { class: "p-obj pair" }, k + 1 < n ? "🧦🧦" : "🧦")); el.append(d); } },
+      choices: [{ value: "par", label: "Par" }, { value: "impar", label: "Impar" }], answer: ans, fixedOrder: true, meta: { kind: "parity2", n },
+      hint: n <= 12 ? `Mira si todos los calcetines tienen pareja.` : `Mira la última cifra: ${n % 10}.` };
+  };
+}
+/* ---------- Sumar y restar ---------- */
+function related(op) {
+  return lv => {
+    if (op === "+") { const a = R(1, 9), b = R(1, 9); return { say: `Si ${a} más ${b} es igual a ${a + b}, ¿cuánto es ${b} más ${a}?`, render: el => el.append(E("div", { class: "p-eq" }, `${a} + ${b} = ${a + b}`), E("div", { class: "p-eq" }, `${b} + ${a} = ?`)), choices: numOpts(a + b, { min: 0, max: 20 }), answer: a + b, numeric: true, hint: `En la suma el orden no cambia el resultado.` }; }
+    const c = R(4, 18), b = R(1, Math.min(9, c - 1)), a = c - b;
+    return { say: `Si ${c} menos ${b} es igual a ${a}, ¿cuánto es ${c} menos ${a}?`, render: el => el.append(E("div", { class: "p-eq" }, `${c} − ${b} = ${a}`), E("div", { class: "p-eq" }, `${c} − ${a} = ?`)), choices: numOpts(b, { min: 0, max: 18 }), answer: b, numeric: true, hint: `Los números ${c}, ${b} y ${a} son de la misma familia.` };
+  };
+}
+function twoDigit(op, kind) { // kind: "1n" 2c+1c sin llevar, "1y" con, "2n", "2y"
+  return lv => {
+    let a, b, t = 0;
+    for (;;) {
+      t++;
+      if (op === "+") {
+        a = R(10, 89); b = kind[0] === "1" ? R(1, 9) : R(10, 89);
+        const carry = (a % 10) + (b % 10) >= 10;
+        if (a + b <= 99 && carry === (kind[1] === "y")) break;
+      } else {
+        a = R(kind[0] === "1" ? 11 : 21, 99); b = kind[0] === "1" ? R(1, 9) : R(10, a - 1);
+        const borrow = (b % 10) > (a % 10);
+        if (b < a && borrow === (kind[1] === "y") && (kind[0] === "1" || Math.floor(b / 10) < Math.floor(a / 10))) break;
+      }
+    }
+    const ans = op === "+" ? a + b : a - b, regroup = kind[1] === "y";
+    return { say: `¿Cuánto es ${a} ${opword(op)} ${b}?`, render: el => el.append(column(a, b, op)), choices: numOpts(ans, { min: 0, max: 120, near: [10, -10, 1, -1, 9, -9, 11] }), answer: ans, numeric: true, meta: { kind: "col", a, b, op, regroup },
+      hint: op === "+" ? `Primero suma las unidades: ${a % 10} + ${b % 10} = ${a % 10 + b % 10}.${regroup ? " Como pasa de 9, llevas una decena." : ""} Luego suma las decenas.`
+        : `Primero resta las unidades: ${a % 10} − ${b % 10}.${regroup ? " No alcanza: pide prestada una decena y tendrás " + (a % 10 + 10) + "." : ""} Luego resta las decenas.` };
+  };
+}
+const roundT = n => Math.round(n / 10) * 10;
+function estimate(op) {
+  return lv => {
+    let a, b; do { a = R(11, 89); b = R(11, op === "+" ? 89 : a - 1); } while (a % 10 === 5 || b % 10 === 5 || (op === "+" ? a + b > 99 : b >= a));
+    const ans = op === "+" ? roundT(a) + roundT(b) : roundT(a) - roundT(b);
+    return { say: `Estima: redondea cada número a la decena más cercana. ¿Cuál es la mejor estimación de ${a} ${opword(op)} ${b}?`, render: el => el.append(E("div", { class: "p-eq" }, `${a} ${opsym(op)} ${b} ≈ ?`)),
+      choices: numOpts(ans, { min: 0, max: 200, near: [10, -10, 20, -20] }), answer: ans, numeric: true, hint: `${a} se redondea a ${roundT(a)} y ${b} a ${roundT(b)}.` };
+  };
+}
+function doubles(mod = 0, op = "+") {
+  return lv => {
+    const a = R(mod < 0 ? 2 : 1, lv === 1 ? 5 : 10), b = a + mod;
+    if (op === "-") { const c = 2 * a; return { say: `¿Cuánto es ${c} menos ${a}?`, render: el => el.append(E("div", { class: "p-eq" }, `${c} − ${a} = ?`)), choices: numOpts(a, { min: 0, max: 20 }), answer: a, numeric: true, hint: `Piensa en el doble: ${a} + ${a} = ${c}.` }; }
+    const ans = a + b, x = Math.random() < .5 ? [a, b] : [b, a];
+    return { say: `¿Cuánto es ${x[0]} más ${x[1]}?`, render: el => el.append(E("div", { class: "p-eq" }, `${x[0]} + ${x[1]} = ?`)), choices: numOpts(ans, { min: 0, max: 21 }), answer: ans, numeric: true,
+      hint: mod === 0 ? `Es un doble: ${a} y ${a} más.` : `Usa el doble: ${a} + ${a} = ${2 * a}, y ${mod > 0 ? "suma" : "resta"} 1.` };
+  };
+}
+function makeTen() {
+  return lv => {
+    const a = R(1, 9), b = 10 - a;
+    return { say: `¿Cuánto le falta al ${a} para llegar a 10?`, render: el => { el.append(E("div", { class: "p-eq" }, `${a} + ? = 10`)); el.append(tenFrame(a, "#2f6fe0")); }, choices: numOpts(b, { min: 0, max: 10 }), answer: b, numeric: true, hint: `Cuenta los espacios vacíos del marco de diez.` };
+  };
+}
+function tens(op, mode) { // mode "two": 30+40 ; "one": 34+20
+  return lv => {
+    let a, b;
+    if (mode === "two") { a = R(1, 9) * 10; b = op === "+" ? R(1, 10 - a / 10) * 10 : R(1, a / 10) * 10; if (op === "+" && a + b > 100) b = 100 - a; }
+    else { a = R(11, 89); b = op === "+" ? R(1, Math.floor((99 - a) / 10)) * 10 : R(1, Math.floor(a / 10)) * 10; if (!b) b = 10; }
+    if (op === "-" && b > a) [a, b] = [b, a];
+    if (op === "+" && a + b > 100) return tens(op, mode)(lv);
+    const ans = op === "+" ? a + b : a - b;
+    return { say: `¿Cuánto es ${a} ${opword(op)} ${b}?`, render: el => el.append(E("div", { class: "p-eq" }, `${a} ${opsym(op)} ${b} = ?`)), choices: numOpts(ans, { min: 0, max: 100, near: [10, -10, 1, -1, 20] }), answer: ans, numeric: true,
+      hint: `${b} son ${b / 10} decenas. ${op === "+" ? "Suma" : "Resta"} ${b / 10} a la cifra de las decenas.` };
+  };
+}
+function drill(op, n) {
+  return lv => {
+    let a, b; if (op === "+") { a = R(0, 10); b = n; if (Math.random() < .4) [a, b] = [b, a]; } else { a = R(n, n + 10); b = n; }
+    const ans = op === "+" ? a + b : a - b;
+    return { say: `¿Cuánto es ${a} ${opword(op)} ${b}?`, render: el => el.append(E("div", { class: "p-eq" }, `${a} ${opsym(op)} ${b} = ?`)), choices: numOpts(ans, { min: 0, max: 20 }), answer: ans, numeric: true,
+      hint: n === 0 ? (op === "+" ? `Sumar cero no cambia el número.` : `Restar cero no cambia el número.`) : `Cuenta ${n} ${op === "+" ? "hacia delante" : "hacia atrás"} desde ${a}.` };
+  };
+}
+/* ---------- Operaciones mixtas ---------- */
+function mixedPicture(lv) { return (Math.random() < .5 ? K.addPicture(10) : K.subPicture(10))(lv); }
+function waysToMake() {
+  return lv => {
+    const t = R(2, 12), useSub = Math.random() < .5;
+    let good; if (useSub) { const a = R(t + 1, t + 8); good = `${a} − ${a - t}`; } else { const a = R(0, t); good = `${a} + ${t - a}`; }
+    return { say: `¿Qué operación da ${t}?`, render: el => el.append(E("div", { class: "p-bignum" }, String(t))),
+      choices: exprOpts(good, () => { const x = R(1, 15), y = R(0, 9); if (Math.random() < .5) return x + y !== t && x + y <= 20 ? `${x} + ${y}` : null; return x - y !== t && y <= x ? `${x} − ${y}` : null; }), answer: good, hint: `Resuelve cada operación y busca la que da ${t}.` };
+  };
+}
+function mixedDoubles(lv) { return (Math.random() < .5 ? doubles(0) : doubles(0, "-"))(lv); }
+function factFamily() {
+  return lv => {
+    const a = R(1, 9), b = R(1, 9), c = a + b;
+    const fam = [`${a} + ${b} = ${c}`, `${b} + ${a} = ${c}`, `${c} − ${a} = ${b}`, `${c} − ${b} = ${a}`], good = pick(fam);
+    const wrong = () => { const x = R(1, 9), y = R(1, 9); const set = [x, y, x + y]; if ([a, b, c].sort().join() === set.sort().join()) return null; return pick([`${x} + ${y} = ${x + y}`, `${x + y} − ${x} = ${y}`]); };
+    return { say: `¿Qué operación es de la familia de los números ${a}, ${b} y ${c}?`, render: el => el.append(E("div", { class: "p-seq" }, [a, b, c].map(v => E("span", {}, String(v))))),
+      choices: exprOpts(good, wrong), answer: good, wide: true, hint: `La operación debe usar solo los números ${a}, ${b} y ${c}.` };
+  };
+}
+function relatedMixed(lv) { return related(Math.random() < .5 ? "+" : "-")(lv); }
+function facts20(lv) { return (Math.random() < .5 ? K.addFacts(20) : K.subFacts(18))(lv); }
+function completeAny() {
+  return lv => {
+    const op = Math.random() < .5 ? "+" : "-";
+    let a, b, c; if (op === "+") { a = R(0, 10); b = R(0, 10); c = a + b; } else { a = R(1, 18); b = R(0, Math.min(10, a)); c = a - b; }
+    const pos = R(0, 2), vals = [a, b, c], ans = vals[pos], show = vals.map((v, k) => k === pos ? "?" : v);
+    return { say: `Completa la operación: ${show.map(v => v === "?" ? "¿cuánto?" : v).slice(0, 2).join(` ${opword(op)} `)} es igual a ${show[2] === "?" ? "¿cuánto?" : show[2]}.`,
+      render: el => el.append(E("div", { class: "p-eq" }, `${show[0]} ${opsym(op)} ${show[1]} = ${show[2]}`)), choices: numOpts(ans, { min: 0, max: 20 }), answer: ans, numeric: true, hint: `Prueba con cada opción y mira si la igualdad se cumple.` };
+  };
+}
+function tenMoreLess() {
+  return lv => {
+    const more = Math.random() < .5, n = more ? R(1, 89) : R(11, 99), ans = more ? n + 10 : n - 10, row = Math.max(0, Math.min(6, Math.floor((n - 1) / 10) - 1));
+    return { say: `¿Qué número es diez ${more ? "más" : "menos"} que ${n}?`, render: el => el.append(hundredChart(row, 4, -1)), choices: numOpts(ans, { min: 0, max: 100, near: [1, -1, 10, -10, 20] }), answer: ans, numeric: true,
+      hint: `En la tabla, diez ${more ? "más está justo debajo" : "menos está justo arriba"}. Solo cambia la cifra de las decenas.` };
+  };
+}
+/* ---------- Comparar ---------- */
+function compareSym(max) {
+  return lv => {
+    const a = R(0, max), b = Math.random() < .2 ? a : (() => { let v; do { v = max > 100 ? a + R(-120, 120) : R(0, max); } while (v === a || v < 0 || v > max); return v; })();
+    const ans = a < b ? "<" : a > b ? ">" : "=";
+    return { say: `Compara ${a} y ${b}. ¿Qué signo va en el medio: menor que, mayor que o igual?`, render: el => el.append(E("div", { class: "p-cmp" }, E("span", {}, String(a)), E("span", { class: "box" }, "?"), E("span", {}, String(b)))),
+      choices: [{ value: "<", label: "<", aria: "menor que" }, { value: ">", label: ">", aria: "mayor que" }, { value: "=", label: "=", aria: "igual" }], answer: ans, fixedOrder: true, sym: true,
+      hint: `El caimán 🐊 siempre abre la boca hacia el número más grande.` };
+  };
+}
+function orderRange(max) {
+  return lv => {
+    const n = lv === 1 ? 3 : 4, set = new Set(); while (set.size < n) set.add(R(max > 100 ? 100 : 1, max)); const vals = [...set];
+    return { kind: "order", say: `Toca los números en orden, del más pequeño al más grande.`, choices: vals.map(v => ({ value: v, label: String(v) })), order: vals.slice().sort((a, b) => a - b), hint: `Mira primero la cifra más grande de cada número.` };
+  };
+}
+/* ---------- Valor posicional ---------- */
+function placeModel(max) {
+  return lv => {
+    const n = R(11, max), t = Math.floor(n / 10), o = n % 10;
+    const alts = new Set([n]); [n + 10, n - 10, t + o * 10, n + 1, n - 1].forEach(v => { if (alts.size < 3 && v >= 10 && v <= max && v % 10 <= 9) alts.add(v); });
+    while (alts.size < 3) alts.add(R(10, max));
+    return { say: `¿Qué dibujo muestra el número ${n}?`, render: el => el.append(E("div", { class: "p-bignum" }, String(n))),
+      choices: shuffle([...alts]).map(v => ({ value: v, node: () => tensOnes(Math.floor(v / 10), v % 10), aria: `${Math.floor(v / 10)} decenas y ${v % 10} unidades` })), answer: n, hint: `${n} tiene ${t} ${t === 1 ? "barra" : "barras"} de diez y ${o} cubitos sueltos.` };
+  };
+}
+const dyu = v => `${Math.floor(v / 10)} ${Math.floor(v / 10) === 1 ? "decena" : "decenas"} y ${v % 10} ${v % 10 === 1 ? "unidad" : "unidades"}`;
+function writeTensOnes(max) {
+  return lv => {
+    const n = R(11, max), t = Math.floor(n / 10), o = n % 10, good = dyu(n), set = new Set([good]);
+    [o * 10 + t, n + 10, n - 10, n + 1].forEach(v => { if (set.size < 3 && v >= 10 && v <= 99 && v !== n) set.add(dyu(v)); });
+    while (set.size < 3) set.add(dyu(R(10, 99)));
+    return { say: `¿Cómo se escribe ${n} en decenas y unidades?`, render: el => el.append(E("div", { class: "p-bignum" }, String(n))), choices: shuffle([...set]).map(v => ({ value: v, label: v })), answer: good, wide: true,
+      hint: `La primera cifra dice las decenas y la segunda las unidades.` };
+  };
+}
+/* ---------- Fracciones ---------- */
+function partsEqual() {
+  return lv => {
+    const n = pick([2, 3, 4]);
+    if (Math.random() < .5) {
+      const opts = [{ value: "ok", node: () => (Math.random() < .5 ? pie(n, 0, { size: 96 }) : rectParts(n, 0, { w: 150, h: 70 })), aria: "partes iguales" }, { value: "no1", node: () => rectParts(n, 0, { equal: false, w: 150, h: 70 }), aria: "partes desiguales" }, { value: "no2", node: () => pie(n, 0, { equal: false, size: 96 }), aria: "partes desiguales" }];
+      return { say: `¿Cuál figura está dividida en ${PART_NAME[n]}, es decir, en ${n} partes iguales?`, choices: shuffle(opts), answer: "ok", hint: `En partes iguales, todos los pedazos tienen el mismo tamaño.` };
+    }
+    return { say: `¿En qué partes iguales está dividida la figura?`, render: el => el.append(Math.random() < .5 ? pie(n, 0) : rectParts(n, 0)),
+      choices: [2, 3, 4].map(v => ({ value: v, label: PART_NAME[v][0].toUpperCase() + PART_NAME[v].slice(1) })), answer: n, fixedOrder: true, hint: `Cuenta las partes: 2 son mitades, 3 son tercios y 4 son cuartos.` };
+  };
+}
+const FRACS = ["1/2", "1/3", "2/3", "1/4", "2/4", "3/4"];
+const fracOpts = good => shuffle([good, ...sampleN(FRACS.filter(f => f !== good && !(good === "2/4" && f === "1/2") && !(good === "1/2" && f === "2/4")), 3)]).map(v => ({ value: v, label: v, speak: frWord(v) }));
+const parse = f => f.split("/").map(Number);
+function fracWhole(model) {
+  return lv => {
+    const f = pick(lv === 1 ? ["1/2", "1/3", "1/4"] : FRACS), [k, n] = parse(f);
+    const drawn = model === "pie" ? pie(n, k) : model === "bar" ? fracBar(n, k) : (n === 4 && Math.random() < .5 ? rectParts(4, k, { grid: true, w: 160, h: 120 }) : rectParts(n, k));
+    return { say: `¿Qué fracción de la figura está pintada?`, render: el => el.append(drawn), choices: fracOpts(f), answer: f, meta: { kind: "frac", k, n },
+      hint: `Abajo va el total de partes: ${n}. Arriba, las pintadas: ${k}.` };
+  };
+}
+function fracGroup() {
+  return lv => {
+    const n = pick([2, 3, 4]), k = R(1, n - 1), f = `${k}/${n}`, e = pick(["⚽", "🍎", "🐟", "🎈", "⭐"]), row = E("div", { class: "p-objs" });
+    for (let i = 0; i < n; i++) row.append(E("span", { class: "p-obj", style: i < k ? "filter:none" : "filter:grayscale(1);opacity:.45" }, e));
+    return { say: `¿Qué fracción del grupo tiene color?`, render: el => el.append(row), choices: fracOpts(f), answer: f, meta: { kind: "frac", k, n }, hint: `Hay ${n} en total y ${k} con color.` };
+  };
+}
+function showFrac(model) {
+  return lv => {
+    const f = pick(FRACS.filter(x => x !== "2/4")), [k, n] = parse(f);
+    const draw = (kk, nn) => model === "bar" ? fracBar(nn, kk) : nn === 4 ? rectParts(4, kk, { grid: true, w: 120, h: 90 }) : pie(nn, kk, { size: 100 });
+    const alts = [[k, n], [n - k, n], [k, n === 4 ? 3 : n + 1], [1, 2]].filter(([a, b], i, arr) => a > 0 && a < b && arr.findIndex(x => x[0] / x[1] === a / b) === i);
+    if (alts.length < 3) alts.push([1, 4], [1, 3]);
+    const opts = alts.filter((x, i, arr) => arr.findIndex(y => y[0] / y[1] === x[0] / x[1]) === i).slice(0, 3);
+    return { say: `¿Qué dibujo muestra ${frWord(f)}?`, render: el => el.append(E("div", { class: "p-bignum" }, f)),
+      choices: shuffle(opts).map(([a, b]) => ({ value: `${a}/${b}`, node: () => draw(a, b), aria: frWord(`${a}/${b}`) })), answer: f, wide: model === "bar", hint: `Busca el dibujo con ${n} partes iguales y ${k} pintadas.` };
+  };
+}
+function fracNumberLine(unitOnly) {
+  return lv => {
+    const n = pick([2, 3, 4]), k = unitOnly ? 1 : R(1, n - 1), f = `${k}/${n}`;
+    return { say: `La recta va de 0 a 1 y está dividida en ${n} partes iguales. ¿Qué fracción marca el punto rojo?`, render: el => el.append(fracLine(n, k)), choices: fracOpts(f), answer: f, meta: { kind: "frac", k, n },
+      hint: `Cuenta los saltos desde el 0 hasta el punto: ${k}. El total de partes es ${n}.` };
+  };
+}
+/* ---------- Medidas y posiciones ---------- */
+function thermo5() { return lv => { const v = R(2, 19) * 5; return { say: `¿Qué temperatura marca el termómetro?`, render: el => el.append(thermometer(v)), choices: numOpts(v, { min: 0, max: 100, near: [5, -5, 10, -10] }).map(o => ({ ...o, label: o.label + "°" })), answer: v, numeric: true, hint: `Entre cada número hay 10 grados. Si la línea está en la mitad, son 5 más.` }; }; }
+function coordinates() {
+  return lv => {
+    const items = {}, used = sampleN(K.ANIMALS, 6), cells = sampleN([..."ABCDE"].flatMap(c => [1, 2, 3, 4, 5].map(r => c + r)), 6);
+    cells.forEach((c, i) => items[c] = used[i]);
+    const target = pick(cells);
+    if (Math.random() < .5) return { say: `¿Qué animal está en ${target[0]} ${target[1]}?`, render: el => el.append(coordGrid(items)), choices: shuffle([items[target], ...sampleN(used.filter(x => x !== items[target]), 3)]).map(v => ({ value: v, label: v, emoji: true })), answer: items[target],
+      hint: `Busca la letra ${target[0]} abajo y sube hasta el número ${target[1]}.` };
+    const others = sampleN(cells.filter(c => c !== target), 3);
+    return { say: `¿Dónde está este animal?`, render: el => { el.append(E("div", { class: "p-bigemoji" }, items[target])); el.append(coordGrid(items)); }, choices: shuffle([target, ...others]).map(v => ({ value: v, label: v })), answer: target,
+      hint: `Primero mira la letra de abajo y luego el número del lado.` };
+  };
+}
+/* ---------- Patrones ---------- */
+function numSeq(dir) {
+  return lv => {
+    const step = pick(lv === 1 ? [1, 2, 10] : [2, 3, 5, 10]), len = 5, start = dir > 0 ? R(0, 100 - step * (len - 1)) : R(step * (len - 1), 100);
+    const seq = Array.from({ length: len }, (_, k) => start + dir * step * k), miss = R(1, len - 1), ans = seq[miss];
+    return { say: `Completa la secuencia: ${seq.map((v, k) => k === miss ? "¿?" : v).join(", ")}.`, render: el => el.append(E("div", { class: "p-seq" }, seq.map((v, k) => E("span", { class: k === miss ? "p-slot" : "" }, k === miss ? "?" : String(v))))),
+      choices: numOpts(ans, { min: 0, max: 120, near: [1, -1, step, -step, 2 * step] }), answer: ans, numeric: true, hint: `Cada número ${dir > 0 ? "sube" : "baja"} ${step}.` };
+  };
+}
+/* ---------- Probabilidad ---------- */
+function likely() {
+  return lv => {
+    const cs = sampleN(PROB_COLORS, lv === 1 ? 2 : 3), counts = {}; cs.forEach(c => counts[c] = R(1, 6));
+    if (Math.random() < .4) { const [a, b] = cs; const ans = counts[a] > counts[b] ? "mas" : counts[a] < counts[b] ? "menos" : "igual";
+      return { say: `Sacas una canica sin mirar. ¿Es más, menos o igual de probable sacar ${a} que ${b}?`, render: el => el.append(bag(counts)),
+        choices: [{ value: "mas", label: "Más probable" }, { value: "menos", label: "Menos probable" }, { value: "igual", label: "Igual de probable" }], answer: ans, fixedOrder: true, hint: `Cuenta las canicas de color ${a} y las de color ${b}.` }; }
+    const most = Math.random() < .5, vals = cs.map(c => counts[c]), best = most ? Math.max(...vals) : Math.min(...vals);
+    if (vals.filter(v => v === best).length > 1) { counts[cs[0]] = best + (most ? 1 : -1) || best + 1; return likely()(lv); }
+    const ans = cs.find(c => counts[c] === best);
+    return { say: `Sacas una canica sin mirar. ¿Qué color es ${most ? "más" : "menos"} probable?`, render: el => el.append(bag(counts)), choices: cs.map(c => ({ value: c, node: () => E("span", { class: "p-frac-lbl" }, E("i", { style: `display:inline-block;width:26px;height:26px;border-radius:50%;vertical-align:middle;margin-right:6px;background:${COLORS[c]}` }), c), aria: c })),
+      answer: ans, hint: `El color con ${most ? "más" : "menos"} canicas es el ${most ? "más" : "menos"} probable.` };
+  };
+}
+function certainImpossible() {
+  return lv => {
+    const want = pick(["seguro", "probable", "improbable", "imposible"]), c = pick(PROB_COLORS), other = pick(PROB_COLORS.filter(x => x !== c)), total = R(6, 10), counts = {};
+    if (want === "seguro") counts[c] = total; else if (want === "imposible") counts[other] = total;
+    else if (want === "probable") { counts[c] = R(Math.floor(total / 2) + 1, total - 1); counts[other] = total - counts[c]; }
+    else { counts[c] = R(1, Math.ceil(total / 2) - 1); counts[other] = total - counts[c]; }
+    return { say: `Si sacas una canica sin mirar, ¿es seguro, probable, improbable o imposible que salga de color ${c}?`, render: el => el.append(bag(counts)),
+      choices: ["seguro", "probable", "improbable", "imposible"].map(v => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), answer: want, fixedOrder: true, meta: { kind: "prob", counts, c },
+      hint: `Seguro: todas son ${c}. Probable: la mayoría. Improbable: pocas. Imposible: ninguna.` };
+  };
+}
+
+/* ---------- Curso 1.º grado ---------- */
+const G1_UNITS = [
+  g1("A", "🔢", "#ff7a59", "Números y contar", [["A1", "Aprender a contar hasta 10", K.learnCount(10), { learn: true }], ["A2", "Contar hasta 10", K.count(10)], ["A3", "Contar de dos en dos", K.sequence(0, 100, 2)], ["A4", "Contar de cinco en cinco", K.sequence(0, 100, 5)], ["A5", "Contar de diez en diez", K.sequence(0, 100, 10)], ["A6", "De dos, de cinco y de diez en diez", K.skipMixed()], ["A7", "Contar según patrones", patternCount()], ["A8", "Rectas numéricas", K.lineWindow(0, 100)], ["A9", "Contar en la tabla de centenas", K.hundredSkill()], ["A10", "Hacia delante y hacia atrás hasta 100", K.afterBefore(1, 100)], ["A11", "Estimar a la decena más cercana", roundTen()], ["A12", "Hacia delante y hacia atrás hasta 1.000", K.afterBefore(100, 999)], ["A13", "Números pares e impares", evenOdd()]]),
+  g1("B", "➕", "#2bb24c", "Sumar", [["B1", "La suma que coincide con el dibujo", K.addPicture(10)], ["B2", "Sumas hasta 10", K.addFacts(10)], ["B3", "Formar un número con sumas hasta 10", K.makeNumberAdd(10)], ["B4", "Completar sumas hasta 10", K.completeAdd(10)], ["B5", "Sumas hasta 20", K.addFacts(20)], ["B6", "Formar un número con sumas hasta 20", K.makeNumberAdd(20)], ["B7", "Sumas relacionadas", related("+")], ["B8", "Dos cifras + una cifra, sin llevar", twoDigit("+", "1n")], ["B9", "Dos cifras + una cifra, llevando", twoDigit("+", "1y")], ["B10", "Dos cifras + dos cifras, sin llevar", twoDigit("+", "2n")], ["B11", "Dos cifras + dos cifras, llevando", twoDigit("+", "2y")], ["B12", "Estimar sumas", estimate("+")]]),
+  g1("C", "🧠", "#19b37a", "Estrategias de suma", [["C1", "Sumar los dobles", doubles(0)], ["C2", "Dobles más uno", doubles(1)], ["C3", "Dobles menos uno", doubles(-1)], ["C4", "Completar hasta 10", makeTen()], ["C5", "Sumar dos múltiplos de 10", tens("+", "two")], ["C6", "Sumar un múltiplo de 10", tens("+", "one")]]),
+  g1("D", "🏋️", "#3c9a28", "Entrenamiento de sumas", [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((n, i) => [`D${i + 1}`, `Sumar ${n}`, drill("+", n)])),
+  g1("E", "➖", "#1fb8c9", "Restar", [["E1", "La resta que coincide con el dibujo", K.subPicture(10)], ["E2", "Restas hasta 10", K.subFacts(10)], ["E3", "Formar un número con restas hasta 10", K.makeNumberSub(10)], ["E4", "Completar restas hasta 10", K.completeSub(10)], ["E5", "Restas hasta 18", K.subFacts(18)], ["E6", "Formar un número con restas hasta 18", K.makeNumberSub(18)], ["E7", "Restas relacionadas", related("-")], ["E8", "Dos cifras − una cifra, sin prestar", twoDigit("-", "1n")], ["E9", "Dos cifras − una cifra, prestando", twoDigit("-", "1y")], ["E10", "Dos cifras − dos cifras, sin prestar", twoDigit("-", "2n")], ["E11", "Dos cifras − dos cifras, prestando", twoDigit("-", "2y")], ["E12", "Estimar restas", estimate("-")]]),
+  g1("F", "💡", "#2672e6", "Estrategias de resta", [["F1", "Restar dobles", doubles(0, "-")], ["F2", "Restar dos múltiplos de 10", tens("-", "two")], ["F3", "Restar un múltiplo de 10", tens("-", "one")]]),
+  g1("G", "🥊", "#1f8fc9", "Entrenamiento de restas", [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((n, i) => [`G${i + 1}`, `Restar ${n}`, drill("-", n)])),
+  g1("H", "🔀", "#8e4ad9", "Operaciones mixtas", [["H1", "Suma o resta del dibujo", mixedPicture], ["H2", "Maneras de conseguir un número", waysToMake()], ["H3", "Sumar o restar dobles", mixedDoubles], ["H4", "Familias de operaciones", factFamily()], ["H5", "Sumas y restas relacionadas hasta 20", relatedMixed], ["H6", "Sumas y restas hasta 20", facts20], ["H7", "Completar la suma o la resta", completeAny()], ["H8", "Diez más o diez menos", tenMoreLess()], ["H9", "Sumar o restar un múltiplo de 10", lv => tens(pick(["+", "-"]), "one")(lv)], ["H10", "Sumar o restar dos múltiplos de 10", lv => tens(pick(["+", "-"]), "two")(lv)]]),
+  g1("I", "🐊", "#d9541e", "Comparar y ordenar", [["I1", "Comparar números hasta 10", compareSym(10)], ["I2", "Comparar números hasta 100", compareSym(100)], ["I3", "Comparar números hasta 1.000", compareSym(1000)], ["I4", "Ordenar números hasta 100", orderRange(100)], ["I5", "Ordenar números hasta 1.000", orderRange(1000)]]),
+  g1("J", "🧱", "#f6a21a", "Valor posicional", [["J1", "Contar decenas y unidades hasta 20", K.tensOnesSkill(20)], ["J2", "Modelos de valor posicional hasta 20", placeModel(20)], ["J3", "Decenas y unidades hasta 20", writeTensOnes(20)], ["J4", "Contar decenas y unidades hasta 100", K.tensOnesSkill(99)], ["J5", "Modelos de valor posicional hasta 100", placeModel(99)], ["J6", "Decenas y unidades hasta 100", writeTensOnes(99)]]),
+  g1("K", "🍕", "#ff4f7b", "Fracciones", [["K1", "Mitades, tercios y cuartos", partsEqual()], ["K2", "Partes de un todo", fracWhole("pie")], ["K3", "Partes de un grupo", fracGroup()], ["K4", "Barras de fracciones", fracWhole("bar")], ["K5", "Modelos con áreas", fracWhole("area")], ["K6", "Mostrar fracciones con barras", showFrac("bar")], ["K7", "Mostrar fracciones con áreas", showFrac("area")], ["K8", "Fracciones unitarias en la recta", fracNumberLine(true)], ["K9", "Fracciones en la recta numérica", fracNumberLine(false)]]),
+  g1("L", "📐", "#d9541e", "Medidas y posiciones", [["L1", "Medir con objetos", K.measureClips()], ["L2", "Medir con una regla", K.measureRuler()], ["L3", "Leer un termómetro", thermo5()], ["L4", "Comparar longitudes", K.compareLengths()], ["L5", "Ubicación en una cuadrícula", K.gridSkill()], ["L6", "Encima y debajo", K.aboveBelow()], ["L7", "Unidades de tiempo", K.timeUnits()], ["L8", "Objetos en un plano de coordenadas", coordinates()]]),
+  g1("M", "🔺", "#2f6fe0", "Geometría", [["M1", "Comparar lados y vértices", K.sidesCorners()], ["M2", "Identificar figuras planas", K.identify2D()], ["M3", "Caras, vértices y aristas", K.faceCount()], ["M4", "Identificar figuras con volumen", K.identify3D()], ["M5", "Figuras en objetos de la vida diaria", K.everyday3D()], ["M6", "Figura que deja al trazarla", K.traceShape()], ["M7", "Las caras de las figuras", K.facesOf()]]),
+  g1("N", "🔁", "#7d55f0", "Patrones", [["N1", "Completar un patrón", K.completePattern()], ["N2", "Reconocer un patrón", K.samePattern()], ["N3", "Secuencias crecientes", numSeq(1)], ["N4", "Secuencias decrecientes", numSeq(-1)]]),
+  g1("O", "🎲", "#19b37a", "Probabilidad", [["O1", "Más, menos o igual de probable", likely()], ["O2", "Seguro, probable, improbable o imposible", certainImpossible()]])
+];
+const course = window.PRE.COURSES.find(c => c.id === "g1");
+course.units = G1_UNITS;
+G1_UNITS.forEach(u => u.skills.forEach(s => K.ALL_SKILLS.push({ ...s, unit: u })));
+window.G1 = { G1_UNITS };
 })();
 
 </script>
@@ -1430,9 +1827,7 @@ function Home(){
   ));
 }
 
-function WorldMap(){
-  window.__back = WorldMap;
-  const n = Store.d.name;
+function worldCards(){
   const cards = WORLDS.map((w,i) => {
     const ok = unlocked(i);
     return h("button",{class:`world ${w.cls}`,disabled:!ok,"aria-label":`${w.name}. ${w.desc}. ${ok?starsFor(w.id)+" estrellas":"Bloqueado"}`,onclick:()=>{Sound.tap();Game(w);}},
@@ -1444,6 +1839,11 @@ function WorldMap(){
     h("span",{class:"w-emoji"},"🚀"), h("span",{class:"w-tag"},RUSH.tag), h("span",{class:"w-name"},RUSH.name), h("span",{class:"w-desc"},RUSH.desc),
     h("span",{class:"w-stars",style:"font-family:var(--f-display);font-weight:800;font-size:1.2rem"},`Récord: ${Store.d.best}`),
     rOk ? null : h("span",{class:"lock",title:"Gana una estrella en el Mar de las Restas"},"🔒")));
+  return cards;
+}
+function WorldMap(){
+  window.__back = WorldMap;
+  const cards = worldCards();
   show(h("section",{class:"screen"},
     h("div",{class:"topbar"},
       h("button",{class:"icon-btn","aria-label":"Volver a los cursos",onclick:Courses},"🎒"),
@@ -1471,7 +1871,7 @@ function Game(world){
   const repeat = h("button",{class:"icon-btn","aria-label":"Repetir pregunta"},"🔊");
   const mic = MicButton();
   show(h("section",{class:"screen"},
-    h("div",{class:"topbar"}, h("button",{class:"icon-btn","aria-label":"Volver al mapa",onclick:WorldMap},"🗺️"), progress, repeat),
+    h("div",{class:"topbar"}, h("button",{class:"icon-btn","aria-label":"Volver al mapa",onclick:goBack},"🗺️"), progress, repeat),
     h("div",{class:"guide"}, mascot, bubble),
     scene, eq, hintBox, h("div",{class:"mic-row"}, mic), answerArea));
 
@@ -1631,7 +2031,7 @@ function Results(world, mistakes){
     h("h2",{},stars===3?"¡Lo hiciste perfecto!":stars===2?"¡Muy bien!":"¡Buen trabajo!"),
     h("div",{class:"big-stars","aria-label":`${stars} de 3 estrellas`}, [0,1,2].map(k=>h("span",{class:k<stars?"":"off",style:`animation-delay:${.2+k*.25}s`},"⭐"))),
     sticker!=null ? h("div",{class:"card new-sticker"}, h("span",{class:"s"},STICKERS[sticker][0]), h("div",{}, h("strong",{style:"font-family:var(--f-display);font-size:1.4rem"},"¡Pegatina nueva!"), h("p",{},`Ganaste: ${STICKERS[sticker][1]}`))) : null,
-    h("div",{class:"map-actions"}, h("button",{class:"btn",onclick:()=>Game(world)},"🔁 Jugar otra vez"), h("button",{class:"btn alt",onclick:WorldMap},"🗺️ Al mapa"))
+    h("div",{class:"map-actions"}, h("button",{class:"btn",onclick:()=>Game(world)},"🔁 Jugar otra vez"), h("button",{class:"btn alt",onclick:goBack},"🗺️ Al mapa"))
   ));
   Sound.win(); Confetti.burst(180);
   Voice.speak(msg + (sticker!=null ? ` ¡Y ganaste la pegatina ${STICKERS[sticker][1]}!` : ""));
@@ -1648,7 +2048,7 @@ function Rush(){
   const startBtn = h("button",{class:"btn"},"¡Despegar! 🚀");
   const mic = MicButton(); const micRow = h("div",{class:"mic-row",hidden:true}, mic);
   show(h("section",{class:"screen"},
-    h("div",{class:"topbar"}, h("button",{class:"icon-btn","aria-label":"Volver al mapa",onclick:()=>{clearInterval(timerId);WorldMap();}},"🗺️"), h("div",{class:"timer","aria-label":"Tiempo"},bar), pill),
+    h("div",{class:"topbar"}, h("button",{class:"icon-btn","aria-label":"Volver al mapa",onclick:()=>{clearInterval(timerId);goBack();}},"🗺️"), h("div",{class:"timer","aria-label":"Tiempo"},bar), pill),
     h("div",{class:"rocket-lane"}, rocket),
     eq, micRow, area));
   eq.replaceChildren(h("span",{style:"font-size:.5em"},"¿Listo?"));
@@ -1683,7 +2083,7 @@ function Rush(){
     const record = score > Store.d.best; if (record) { Store.d.best = score; Store.save(); }
     Sound.win(); Confetti.burst(record?220:100);
     eq.replaceChildren(h("span",{style:"font-size:.55em"},`¡${score} correctas!`));
-    area.replaceChildren(h("div",{class:"map-actions"}, h("button",{class:"btn",onclick:Rush},"🔁 Otra vez"), h("button",{class:"btn alt",onclick:WorldMap},"🗺️ Al mapa")));
+    area.replaceChildren(h("div",{class:"map-actions"}, h("button",{class:"btn",onclick:Rush},"🔁 Otra vez"), h("button",{class:"btn alt",onclick:goBack},"🗺️ Al mapa")));
     Voice.speak(record ? `¡Nuevo récord! Resolviste ${score}. ¡Eres un cohete!` : `¡Tiempo! Resolviste ${score}. Tu récord es ${Store.d.best}.`);
   }
 }
@@ -1692,7 +2092,7 @@ function Album(){
   show(h("section",{class:"screen"},
     h("div",{class:"topbar"}, h("button",{class:"icon-btn","aria-label":"Volver",onclick:goBack},"⬅️"), h("h2",{class:"grow"},"Mis pegatinas")),
     h("p",{style:"font-weight:700;color:var(--ink-soft)"},"Gana 2 o 3 estrellas en una habilidad o en un mundo para conseguir una pegatina nueva."),
-    (Store.d.medals||[]).length ? h("div",{class:"card medals"}, h("strong",{},"🏅 Medallas de Preescolar"), h("div",{class:"medal-row"}, window.PRE.PRE_UNITS.filter(u=>(Store.d.medals||[]).includes(u.id)).map(u=>h("span",{class:"medal",title:u.name},u.emoji)))) : null,
+    ...window.PRE.COURSES.filter(c=>c.units).map(c=>{ const m=Store.d.medals||[]; const got=c.units.filter(u=>m.includes(u.id)||(c.id==="pre"&&m.includes(u.code))); return got.length ? h("div",{class:"card medals"}, h("strong",{},`🏅 Medallas de ${c.name}`), h("div",{class:"medal-row"}, got.map(u=>h("span",{class:"medal",title:u.name},u.emoji)))) : null; }),
     h("div",{class:"album"}, STICKERS.map(([e,n],k)=>{ const has = Store.d.stickers.includes(k); return h("button",{class:"sticker"+(has?"":" locked"),"aria-label":has?n:"Pegatina escondida",onclick:()=>{ if(has){Sound.pop();Voice.speak(n);} }}, h("span",{class:"s"},e), has?n:"???"); }))
   ));
 }
