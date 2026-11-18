@@ -1,13 +1,18 @@
 # 🦖 Aventura de Números
 
-Juego web para que los niños aprendan a **sumar y restar** con Dino, una mascota que les habla en español.
+Juego web para que los niños aprendan **matemáticas por cursos** con Dino, una mascota que les habla en español.
 
 **▶ Jugar:** https://jdmasoft.github.io/aventura-numeros/
+
+## Cursos
+- **Preescolar** (17 temas, 73 habilidades): contar hasta 3, 5, 10 y 20, marco de diez, recta numérica, números ordinales, tabla de números, decenas y unidades, contar de 2, de 5 y de 10 en 10, clasificar, comparar y ordenar, patrones, sumar y restar hasta 5 y hasta 10, posiciones, medidas (clips, regla, termómetro, longitudes, tiempo), figuras planas y figuras con volumen.
+- **1.º grado**: los 4 mundos de sumas y restas y el Cohete Contrarreloj.
+- **2.º a 8.º**: próximamente.
 
 ## Qué tiene
 - **Voz:** Dino lee cada pregunta, felicita y da pistas en voz alta.
 - **Responder hablando 🎤:** el niño toca «Dímelo» y dice el número («¡siete!»). Funciona en Chrome, Edge y Safari.
-- **4 mundos:** Huerto de las Sumas (hasta 10), Mar de las Restas (hasta 10), Galaxia Mixta (hasta 20) y Castillo del Reto (hasta 100 y números escondidos).
+- **Habilidades guiadas** («Aprender a contar…»): el niño toca cada objeto y Dino cuenta con él.
 - **Pistas sin regañar:** contar objetos juntos, recta numérica y trucos con decenas.
 - **Dificultad adaptativa**, estrellas, 12 pegatinas y un reto contrarreloj de 60 segundos.
 - **Ajustes para mayores:** voz, velocidad, escuchar automáticamente, forma de responder.
